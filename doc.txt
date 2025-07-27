@@ -1,0 +1,64 @@
+python -m venv venv
+
+.\venv\Scripts\Activate.ps1
+
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+
+.\venv\Scripts\Activate.ps1
+
+@"
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.5
+psycopg2-binary==2.9.7
+python-dotenv==1.0.0
+gunicorn==21.2.0
+"@ | Set-Content requirements.txt
+
+@"
+SECRET_KEY=your-super-secret-key-change-this
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=streeteats_db
+DB_USER=streeteats_user
+DB_PASSWORD=your_password
+FLASK_ENV=development
+"@ | Set-Content .env
+
+@"
+/* Custom styles for StreetEats Dashboard */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+.metric-card {
+    transition: transform 0.2s ease-in-out;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+}
+
+.loading-spinner {
+    border-top-color: #f97316;
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Alert animations */
+.alert-enter {
+    opacity: 0;
+    transform: translateY(-10px);
+}
+
+.alert-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 300ms, transform 300ms;
+}
+"@ | Set-Content static/css/style.css
+
