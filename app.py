@@ -249,39 +249,33 @@ def add_sample_data():
     print("Sample data added successfully")
 ## End of sample data loader functions
 ###############
-def get_avg_price_index_all_materials(base_date, current_date, region):
-    conn = sqlite3.connect(DATABASE)
+def get_avg_price_index_all_materials(base_date, current_date, region_id):
+    conn = sqlite3.connect(DATABASE)  # change this to your actual DB
     cursor = conn.cursor()
-    
+
+    # Get avg_price for base_date
     cursor.execute('''
-        SELECT 
-            base.material_id,
-            base.avg_price AS base_price,
-            current.avg_price AS current_price
-        FROM 
-            daily_market_data base
-        JOIN 
-            daily_market_data current 
-        ON 
-            base.material_id = current.material_id
-        WHERE 
-            base.date = ? AND current.date = ? AND current.region_id = ?
-    ''', (base_date, current_date, region))
-    
-    rows = cursor.fetchall()
+        SELECT AVG(avg_price)
+        FROM daily_market_data
+        WHERE date = ? AND region_id = ?
+    ''', (base_date, region_id))
+    base_avg = cursor.fetchone()[0]
+
+    # Get avg_price for current_date
+    cursor.execute('''
+        SELECT AVG(avg_price)
+        FROM daily_market_data
+        WHERE date = ? AND region_id = ?
+    ''', (current_date, region_id))
+    current_avg = cursor.fetchone()[0]
+
     conn.close()
-    
-    indices = []
-    for row in rows:
-        material_id, base_price, current_price = row
-        if base_price and current_price and base_price != 0:
-            index = (current_price / base_price) * 100
-            indices.append(index)
-    
-    if indices:
-        return round(sum(indices) / len(indices), 2)
+
+    if base_avg and current_avg and base_avg > 0:
+        index = current_avg / base_avg
+        return round(index, 2)
     else:
-        return None
+        return 0.0
 
 def get_avg_quality_index_all_materials(base_date, current_date, region):
     conn = sqlite3.connect(DATABASE)
@@ -422,28 +416,36 @@ def dashboard_data():
     
     stats = cursor.fetchone()
     
+    from datetime import datetime, timedelta
+
     today = datetime.now()
     base_date = (today - timedelta(days=days)).strftime('%Y-%m-%d')
     current_date = today.strftime('%Y-%m-%d')
-
-    # Pehle waala index
+    
+    # Current price index
     index = get_avg_price_index_all_materials(
         base_date=base_date,
         current_date=current_date,
         region=r_id
     )
-
-    # Pichhla waala index
+    
+    # Previous window price index
     index_last = get_avg_price_index_all_materials(
         base_date=(today - timedelta(days=2 * days)).strftime('%Y-%m-%d'),
         current_date=(today - timedelta(days=days)).strftime('%Y-%m-%d'),
         region=r_id
     )
-    L = str((index_last - index)/ index_last * 100 if index_last else 0)
-    if int(float(L)) < 0:
-        L = "-₹"+L[1:L.index('.')+3]
+    
+    # % change between indexes
+    if index_last and index_last != 0:
+        change_percent = (index - index_last) / index_last * 100
     else:
-        L = "+₹"+L[:L.index('.')+3]
+        change_percent = 0.0
+    
+    # Format with ₹ and +/- symbol
+    sign = "+" if change_percent >= 0 else "-"
+    formatted_change = f"{sign}₹{abs(change_percent):.2f}"
+
     
     summary = {
     'avg_price_index': float(index or 0),  # Default to 0 if index is None
